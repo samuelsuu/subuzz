@@ -50,7 +50,7 @@ export async function getMessages(otherUserId: string): Promise<Message[]> {
 
     const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select("*, sender:profiles!sender_id(*)")
         .is("group_id", null)
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
         .order("created_at", { ascending: true });

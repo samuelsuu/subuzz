@@ -3,8 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Check, X, Loader2 } from "lucide-react";
+import { Check, X, Loader2, ArrowLeft, MessageSquare, Shield, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -53,13 +54,10 @@ export default function LoginPage() {
             .single();
 
         if (error && error.code === 'PGRST116') {
-            // No result found = available
             setUsernameStatus('available');
         } else if (data) {
-            // Result found = taken
             setUsernameStatus('taken');
         } else {
-            // Other error
             setUsernameStatus('idle');
         }
     }, [supabase]);
@@ -86,7 +84,6 @@ export default function LoginPage() {
         const formData = new FormData(e.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
-        // username is already in state
 
         const { error } = await supabase.auth.signUp({
             email,
@@ -108,113 +105,157 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4 text-white">
-            <div className="w-full max-w-sm space-y-6">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-emerald-400">Subuzz Chat</h1>
-                    <p className="mt-2 text-zinc-400">Realtime Secure Messaging</p>
+        <div className="flex min-h-screen bg-zinc-950 text-white selection:bg-emerald-500/30">
+            {/* Left Side - Visuals (Hidden on mobile) */}
+            <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-900 overflow-hidden flex-col justify-between p-12">
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center opacity-10"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent"></div>
+
+                <div className="relative z-10">
+                    <Link href="/" className="flex items-center gap-2 text-white/80 hover:text-white transition-colors w-fit">
+                        <div className="w-8 h-8 rounded bg-emerald-600 flex items-center justify-center">
+                            <MessageSquare className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="font-bold text-xl tracking-tight">Subuzz</span>
+                    </Link>
                 </div>
 
-                <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-                    <form className="space-y-4" onSubmit={signupMode ? handleSignup : handleLogin}>
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300">
-                                Email
-                            </label>
-                            <input
-                                name="email"
-                                type="email"
-                                required
-                                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                placeholder="you@example.com"
-                            />
+                <div className="relative z-10 space-y-6 max-w-lg">
+                    <h2 className="text-4xl font-bold leading-tight">
+                        Experience the future of <span className="text-emerald-400">secure messaging</span>.
+                    </h2>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-zinc-300">
+                            <Zap className="w-5 h-5 text-emerald-500" />
+                            <span>Real-time message delivery</span>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-zinc-300">
-                                Password
-                            </label>
-                            <input
-                                name="password"
-                                type="password"
-                                required
-                                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                placeholder="••••••••"
-                            />
+                        <div className="flex items-center gap-3 text-zinc-300">
+                            <Shield className="w-5 h-5 text-emerald-500" />
+                            <span>Enterprise-grade security</span>
                         </div>
+                    </div>
+                </div>
 
-                        {signupMode && (
+                <div className="relative z-10 text-sm text-zinc-500">
+                    © {new Date().getFullYear()} Subuzz Inc.
+                </div>
+            </div>
+
+            {/* Right Side - Form */}
+            <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative">
+                {/* Mobile Back Button */}
+                <Link href="/" className="absolute top-6 left-6 lg:hidden p-2 text-zinc-400 hover:text-white transition-colors">
+                    <ArrowLeft className="w-6 h-6" />
+                </Link>
+
+                <div className="w-full max-w-[400px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="text-center lg:text-left">
+                        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                            {signupMode ? "Create an account" : "Welcome back"}
+                        </h1>
+                        <p className="text-zinc-400">
+                            {signupMode ? "Enter your details to get started." : "Enter your credentials to access your account."}
+                        </p>
+                    </div>
+
+                    <form className="space-y-5" onSubmit={signupMode ? handleSignup : handleLogin}>
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-zinc-300">
-                                    Username <span className="text-zinc-500">(Unique)</span>
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        name="username"
-                                        type="text"
-                                        required
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        className={cn(
-                                            "mt-1 block w-full rounded-md border bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 pr-10",
-                                            usernameStatus === 'available' ? "border-emerald-500 focus:ring-emerald-500" :
-                                                usernameStatus === 'taken' ? "border-red-500 focus:ring-red-500" :
-                                                    "border-zinc-700 focus:border-emerald-500 focus:ring-emerald-500"
-                                        )}
-                                        placeholder="clean_coder"
-                                    />
-                                    <div className="absolute right-3 top-1/2 -translate-y-[calc(50%-2px)]">
-                                        {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-zinc-400 animate-spin" />}
-                                        {usernameStatus === 'available' && <Check className="w-4 h-4 text-emerald-500" />}
-                                        {usernameStatus === 'taken' && <X className="w-4 h-4 text-red-500" />}
-                                    </div>
-                                </div>
-                                {usernameStatus === 'taken' && (
-                                    <p className="mt-1 text-xs text-red-400">Username is already taken</p>
-                                )}
+                                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Email</label>
+                                <input
+                                    name="email"
+                                    type="email"
+                                    required
+                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                                    placeholder="name@example.com"
+                                />
                             </div>
-                        )}
 
-                        <div className="flex gap-3 pt-2">
-                            {!signupMode ? (
-                                <>
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50"
-                                    >
-                                        {isLoading ? "..." : "Log in"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSignupMode(true)}
-                                        disabled={isLoading}
-                                        className="flex-1 rounded-md bg-zinc-700 py-2 text-sm font-semibold text-white hover:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50"
-                                    >
-                                        Sign up
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSignupMode(false)}
-                                        disabled={isLoading}
-                                        className="flex-1 rounded-md bg-zinc-700 py-2 text-sm font-semibold text-white hover:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50"
-                                    >
-                                        Back to Login
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading || usernameStatus !== 'available'}
-                                        className="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isLoading ? "..." : "Create Account"}
-                                    </button>
-                                </>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Password</label>
+                                <input
+                                    name="password"
+                                    type="password"
+                                    required
+                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+
+                            {signupMode && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                                        Username <span className="text-zinc-500 text-xs ml-1">(Unique)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            name="username"
+                                            type="text"
+                                            required
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            className={cn(
+                                                "w-full rounded-lg border bg-zinc-900/50 px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 pr-10 transition-all",
+                                                usernameStatus === 'available' ? "border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-500" :
+                                                    usernameStatus === 'taken' ? "border-red-500/50 focus:border-red-500 focus:ring-red-500" :
+                                                        "border-zinc-800 focus:border-emerald-500 focus:ring-emerald-500"
+                                            )}
+                                            placeholder="username"
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {usernameStatus === 'checking' && <Loader2 className="w-5 h-5 text-zinc-400 animate-spin" />}
+                                            {usernameStatus === 'available' && <Check className="w-5 h-5 text-emerald-500" />}
+                                            {usernameStatus === 'taken' && <X className="w-5 h-5 text-red-500" />}
+                                        </div>
+                                    </div>
+                                    {usernameStatus === 'taken' && (
+                                        <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
+                                            <X className="w-3 h-3" /> Username is already taken
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </div>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading || (signupMode && usernameStatus !== 'available')}
+                            className="w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-900/20"
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                                </span>
+                            ) : (
+                                signupMode ? "Create Account" : "Sign In"
+                            )}
+                        </button>
                     </form>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-zinc-800" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-zinc-950 px-2 text-zinc-500">Or continue with</span>
+                        </div>
+                    </div>
+
+                    <div className="text-center text-sm">
+                        <span className="text-zinc-400">
+                            {signupMode ? "Already have an account? " : "Don't have an account? "}
+                        </span>
+                        <button
+                            onClick={() => {
+                                setSignupMode(!signupMode);
+                                setUsernameStatus('idle');
+                                setUsername("");
+                            }}
+                            className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors hover:underline"
+                        >
+                            {signupMode ? "Sign in" : "Sign up"}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

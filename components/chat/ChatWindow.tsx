@@ -5,8 +5,8 @@ import { getMessages, getGroupMessages, deleteMessage, clearConversation, getGro
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { cn } from "@/lib/utils";
 import { User } from "@supabase/supabase-js";
-import type { Socket } from "socket.io-client";
-import { Send, Mic, ArrowLeft, Trash2, Settings, Smile } from "lucide-react";
+import { Socket } from "socket.io-client";
+import { Send, Mic, ArrowLeft, Trash2, Settings, Smile, MessageSquare } from "lucide-react";
 import type { Message, Group } from "@/types/database";
 import MessageBubble from "./MessageBubble";
 import FileUpload from "./FileUpload";
@@ -208,16 +208,16 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
     }
 
     return (
-        <div className={cn("flex flex-col h-full bg-zinc-950", className)}>
+        <div className={cn("flex flex-col h-[100dvh] bg-zinc-950", className)}>
             {/* Header */}
-            <div className="flex items-center px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
+            <div className="flex items-center px-4 py-3 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm z-10 shrink-0">
                 {onBack && (
-                    <button onClick={onBack} className="md:hidden p-2 mr-2 text-zinc-400 hover:text-white">
+                    <button onClick={onBack} className="md:hidden p-2 -ml-2 mr-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800 transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                 )}
                 <div className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 overflow-hidden",
+                    "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 overflow-hidden ring-1 ring-white/10 shrink-0",
                     target.type === 'group' ? "bg-purple-600" : "bg-emerald-600"
                 )}>
                     {target.type === 'group' && currentGroup?.avatar_url ? (
@@ -226,11 +226,11 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                         (currentGroup?.name || target.name).charAt(0).toUpperCase()
                     )}
                 </div>
-                <div className="flex-1">
-                    <h2 className="font-bold text-white">{currentGroup?.name || target.name}</h2>
+                <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-white truncate text-base leading-tight">{currentGroup?.name || target.name}</h2>
                     <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-xs text-emerald-500 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <span className="text-xs text-emerald-500 font-medium truncate">
                             {target.type === 'group' ? 'Group chat' : 'Online'}
                         </span>
                     </div>
@@ -239,7 +239,7 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                 {target.type === 'user' && (
                     <button
                         onClick={handleClearConversation}
-                        className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-full transition-colors"
+                        className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-full transition-colors shrink-0"
                         title="Clear your messages"
                     >
                         <Trash2 className="w-5 h-5" />
@@ -250,7 +250,7 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                 {target.type === 'group' && (
                     <button
                         onClick={() => setShowGroupSettings(true)}
-                        className="p-2 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 rounded-full transition-colors"
+                        className="p-2 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 rounded-full transition-colors shrink-0"
                         title="Group Info & Settings"
                     >
                         <Settings className="w-5 h-5" />
@@ -266,17 +266,17 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                     onClose={() => setShowGroupSettings(false)}
                     onUpdate={(updatedGroup) => {
                         setCurrentGroup(updatedGroup);
-                        // Ideally notify parent to update sidebar, but local state update handles header for now
-                        // We are forced to reload page to reflect in sidebar or lift state
                     }}
                 />
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
                 {messages.length === 0 ? (
-                    <div className="text-center text-zinc-500 py-8">
-                        No messages yet. Start the conversation!
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-500 opacity-50 space-y-2">
+                        <MessageSquare className="w-12 h-12" />
+                        <p>No messages yet.</p>
+                        <p className="text-sm">Start the conversation!</p>
                     </div>
                 ) : (
                     messages.map((msg) => (
@@ -288,26 +288,28 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                         />
                     ))
                 )}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} className="h-2" />
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-zinc-800 bg-zinc-900/30">
+            <div className="p-3 border-t border-zinc-800 bg-zinc-900/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-900/50 shrink-0">
                 {isRecording ? (
                     <VoiceRecorder
                         onRecordingComplete={handleVoiceComplete}
                         onCancel={() => setIsRecording(false)}
                     />
                 ) : (
-                    <div className="relative">
+                    <div className="relative max-w-4xl mx-auto w-full">
                         {showEmojiPicker && (
-                            <div className="absolute bottom-full mb-2 left-0 z-50 shadow-xl rounded-lg overflow-hidden">
+                            <div className="absolute bottom-full mb-2 left-0 z-50 shadow-2xl rounded-2xl overflow-hidden border border-zinc-800 animate-in fade-in slide-in-from-bottom-2">
                                 <EmojiPicker
                                     theme={Theme.DARK}
                                     onEmojiClick={(emojiData) => {
                                         setNewMessage(prev => prev + emojiData.emoji);
                                         setShowEmojiPicker(false);
                                     }}
+                                    width={300}
+                                    height={400}
                                 />
                                 <div
                                     className="fixed inset-0 z-[-1]"
@@ -316,41 +318,43 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                             </div>
                         )}
                         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                            <FileUpload onFileSelect={handleFileSelect} />
-
-                            <button
-                                type="button"
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800 rounded-full transition-colors"
-                                title="Add emoji"
-                            >
-                                <Smile className="w-5 h-5" />
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setIsRecording(true)}
-                                className="p-2 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 rounded-full transition-colors"
-                                title="Record voice note"
-                            >
-                                <Mic className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-1 bg-zinc-800/50 rounded-full p-1 border border-zinc-800">
+                                <div className="hover:bg-zinc-700/50 rounded-full transition-colors">
+                                    <FileUpload onFileSelect={handleFileSelect} />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700/50 rounded-full transition-colors"
+                                    title="Add emoji"
+                                >
+                                    <Smile className="w-5 h-5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRecording(true)}
+                                    className="p-2 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-700/50 rounded-full transition-colors"
+                                    title="Record voice note"
+                                >
+                                    <Mic className="w-5 h-5" />
+                                </button>
+                            </div>
 
                             <input
                                 type="text"
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type a message..."
+                                placeholder="Message..."
                                 disabled={isSending}
-                                className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent disabled:opacity-50"
+                                className="flex-1 bg-zinc-800/50 border border-zinc-800 text-white placeholder-zinc-500 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600/50 disabled:opacity-50 transition-all"
                             />
 
                             <button
                                 type="submit"
                                 disabled={!newMessage.trim() || isSending}
-                                className="bg-emerald-600 text-white rounded-full p-2 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="bg-emerald-600 text-white rounded-full p-3 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-900/20 active:scale-95 shrink-0"
                             >
-                                <Send className="h-5 w-5" />
+                                <Send className="h-5 w-5 ml-0.5" />
                             </button>
                         </form>
                     </div>

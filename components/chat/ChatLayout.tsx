@@ -30,7 +30,7 @@ export default function ChatLayout({ currentUser }: ChatLayoutProps) {
     }, []);
 
     return (
-        <div className="flex h-screen bg-zinc-950 overflow-hidden">
+        <div className="flex h-[100dvh] bg-zinc-950 overflow-hidden">
             {/* Sidebar - hidden on mobile if chat active */}
             <Sidebar
                 currentUser={currentUser}
