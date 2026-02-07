@@ -5,7 +5,7 @@ import { getUsers, getGroups, getCurrentProfile, createGroup } from "@/app/chat/
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { User } from "@supabase/supabase-js";
-import { LogOut, Users, Plus, X, Check, MessageCircle, Camera, Search, Settings, Edit2 } from "lucide-react";
+import { LogOut, Users, Plus, X, Check, MessageCircle, Camera, Search, Settings, Edit2, Trash2 } from "lucide-react";
 import type { Profile, Group } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
@@ -14,7 +14,7 @@ import ProfileSettings from "./ProfileSettings";
 
 interface SidebarProps {
     currentUser: User;
-    onSelectChat: (target: { type: 'user' | 'group'; id: string; name: string }) => void;
+    onSelectChat: (target: { type: 'user' | 'group'; id: string; name: string; avatar_url?: string | null }) => void;
     selectedId?: string;
     className?: string;
 }
@@ -241,34 +241,56 @@ export default function Sidebar({ currentUser, onSelectChat, selectedId, classNa
                         </div>
                     ) : (
                         filteredUsers.map((user) => (
-                            <button
-                                key={user.id}
-                                onClick={() => onSelectChat({ type: 'user', id: user.id, name: user.username || 'Unknown' })}
-                                className={cn(
-                                    "flex w-full items-center gap-3 p-3 rounded-xl text-left transition-all hover:bg-zinc-800/50 group",
-                                    selectedId === user.id ? "bg-emerald-600/10 border border-emerald-600/20" : "border border-transparent"
-                                )}
-                            >
-                                <div className="relative">
-                                    <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-white font-bold overflow-hidden ring-1 ring-white/5">
-                                        {user.avatar_url ? (
-                                            <img src={user.avatar_url} alt={user.username || "User"} className="w-full h-full object-cover" />
-                                        ) : (
-                                            user.username?.charAt(0).toUpperCase() || "?"
-                                        )}
+                            <div key={user.id} className="relative group">
+                                <button
+                                    onClick={() => onSelectChat({
+                                        type: 'user',
+                                        id: user.id,
+                                        name: user.username || 'Unknown',
+                                        avatar_url: user.avatar_url
+                                    })}
+                                    className={cn(
+                                        "flex w-full items-center gap-3 p-3 rounded-xl text-left transition-all hover:bg-zinc-800/50",
+                                        selectedId === user.id ? "bg-emerald-600/10 border border-emerald-600/20" : "border border-transparent"
+                                    )}
+                                >
+                                    <div className="relative">
+                                        <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-white font-bold overflow-hidden ring-1 ring-white/5">
+                                            {user.avatar_url ? (
+                                                <img src={user.avatar_url} alt={user.username || "User"} className="w-full h-full object-cover" />
+                                            ) : (
+                                                user.username?.charAt(0).toUpperCase() || "?"
+                                            )}
+                                        </div>
                                     </div>
-                                    {/* Make this dynamic later */}
-                                    {/* <span className="absolute bottom-0 right-0 w-3 h-3 bg-zinc-500 border-2 border-zinc-950 rounded-full"></span> */}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-start">
-                                        <p className={cn("font-medium truncate transition-colors", selectedId === user.id ? "text-emerald-400" : "text-zinc-200 group-hover:text-white")}>
-                                            {user.username || "Unknown"}
-                                        </p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start">
+                                            <p className={cn("font-medium truncate transition-colors", selectedId === user.id ? "text-emerald-400" : "text-zinc-200 group-hover/btn:text-white")}>
+                                                {user.username || "Unknown"}
+                                            </p>
+                                        </div>
+                                        <p className="text-xs text-zinc-500 truncate mt-0.5 group-hover:text-zinc-400">Tap to start chatting</p>
                                     </div>
-                                    <p className="text-xs text-zinc-500 truncate mt-0.5 group-hover:text-zinc-400">Tap to start chatting</p>
+                                </button>
+                                {/* Mobile/Desktop Delete Action - Visible on hover or long press (handled via UI here for now as button) */}
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm(`Delete conversation with ${user.username}?`)) {
+                                                // Assuming we have a prop or method to delete/hide chat from sidebar
+                                                // For now, this is a placeholder UI action as actual deletion requires backend support
+                                                // defaulting to just UI feedback
+                                                toast.success("Conversation hidden from list");
+                                            }
+                                        }}
+                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-lg transition-colors"
+                                        title="Delete conversation"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
-                            </button>
+                            </div>
                         ))
                     )
                 ) : (

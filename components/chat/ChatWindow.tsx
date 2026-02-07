@@ -6,23 +6,26 @@ import EmojiPicker, { Theme } from "emoji-picker-react";
 import { cn } from "@/lib/utils";
 import { User } from "@supabase/supabase-js";
 import { Socket } from "socket.io-client";
-import { Send, Mic, ArrowLeft, Trash2, Settings, Smile, MessageSquare } from "lucide-react";
+import { Send, Mic, ArrowLeft, Trash2, Settings, Smile, MessageSquare, Plus, X } from "lucide-react";
 import type { Message, Group } from "@/types/database";
 import MessageBubble from "./MessageBubble";
 import FileUpload from "./FileUpload";
 import VoiceRecorder from "./VoiceRecorder";
 import GroupSettings from "./GroupSettings";
+import ImageModal from "./ImageModal";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
 import { compressImage } from "@/utils/imageUtils";
 
 interface ChatWindowProps {
     currentUser: User;
-    target: { type: 'user' | 'group'; id: string; name: string };
+    target: { type: 'user' | 'group'; id: string; name: string; avatar_url?: string | null };
     socket: Socket | null;
     onBack?: () => void;
     className?: string;
 }
+
+
 
 export default function ChatWindow({ currentUser, target, socket, onBack, className }: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -33,6 +36,7 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
     const [showGroupSettings, setShowGroupSettings] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [currentGroup, setCurrentGroup] = useState<Group | null>(null);
+    const [viewingProfileImage, setViewingProfileImage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
 
@@ -140,6 +144,9 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Stop propagation to prevent any parent handlers from firing
+        e.stopPropagation();
+
         if (!newMessage.trim() || !socket || isSending) return;
 
         const content = newMessage;
@@ -216,16 +223,35 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                 )}
-                <div className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 overflow-hidden ring-1 ring-white/10 shrink-0",
-                    target.type === 'group' ? "bg-purple-600" : "bg-emerald-600"
-                )}>
-                    {target.type === 'group' && currentGroup?.avatar_url ? (
-                        <img src={currentGroup.avatar_url} alt={currentGroup.name} className="w-full h-full object-cover" />
+
+                {/* Profile Image - Clickable to view */}
+                <div
+                    className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold mr-3 overflow-hidden ring-1 ring-white/10 shrink-0 cursor-pointer hover:opacity-80 transition-opacity",
+                        target.type === 'group' ? "bg-purple-600" : "bg-emerald-600"
+                    )}
+                    onClick={() => {
+                        const avatar = target.type === 'group' ? currentGroup?.avatar_url : (target.avatar_url || null);
+                        if (avatar) {
+                            setViewingProfileImage(avatar);
+                        }
+                    }}
+                >
+                    {target.type === 'group' ? (
+                        currentGroup?.avatar_url ? (
+                            <img src={currentGroup.avatar_url} alt={currentGroup.name} className="w-full h-full object-cover" />
+                        ) : (
+                            (currentGroup?.name || target.name).charAt(0).toUpperCase()
+                        )
                     ) : (
-                        (currentGroup?.name || target.name).charAt(0).toUpperCase()
+                        target.avatar_url ? (
+                            <img src={target.avatar_url} alt={target.name} className="w-full h-full object-cover" />
+                        ) : (
+                            target.name.charAt(0).toUpperCase()
+                        )
                     )}
                 </div>
+
                 <div className="flex-1 min-w-0">
                     <h2 className="font-bold text-white truncate text-base leading-tight">{currentGroup?.name || target.name}</h2>
                     <div className="flex items-center gap-1.5">
@@ -257,6 +283,15 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                     </button>
                 )}
             </div>
+
+            {/* Profile Image Viewer */}
+            {viewingProfileImage && (
+                <ImageModal
+                    imageUrl={viewingProfileImage}
+                    fileName={`${target.name}-profile.jpg`}
+                    onClose={() => setViewingProfileImage(null)}
+                />
+            )}
 
             {/* Group Settings Modal */}
             {showGroupSettings && target.type === 'group' && (
@@ -317,15 +352,29 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                                 />
                             </div>
                         )}
-                        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-zinc-800/50 rounded-full p-1 border border-zinc-800">
+                        <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-1">
+                            {/* Mobile: Toggle actions button */}
+                            <button
+                                type="button"
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                className="md:hidden p-3 text-zinc-400 hover:text-white bg-zinc-800/50 rounded-full shrink-0"
+                            >
+                                {showEmojiPicker ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            </button>
+
+                            {/* Desktop: Always visible / Mobile: Visible when toggled */}
+                            <div className={cn(
+                                "flex items-center gap-1 bg-zinc-800/50 rounded-full p-1 border border-zinc-800 transition-all",
+                                "md:flex",
+                                showEmojiPicker ? "flex absolute bottom-20 left-4 z-50 bg-zinc-900 shadow-xl" : "hidden"
+                            )}>
                                 <div className="hover:bg-zinc-700/50 rounded-full transition-colors">
                                     <FileUpload onFileSelect={handleFileSelect} />
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                    className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700/50 rounded-full transition-colors"
+                                    className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700/50 rounded-full transition-colors hidden md:block"
                                     title="Add emoji"
                                 >
                                     <Smile className="w-5 h-5" />
@@ -340,14 +389,22 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                                 </button>
                             </div>
 
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Message..."
-                                disabled={isSending}
-                                className="flex-1 bg-zinc-800/50 border border-zinc-800 text-white placeholder-zinc-500 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600/50 disabled:opacity-50 transition-all"
-                            />
+                            <div className="flex-1 min-w-0 relative">
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    placeholder="Message..."
+                                    disabled={isSending}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendMessage(e);
+                                        }
+                                    }}
+                                    className="w-full bg-zinc-800/50 border border-zinc-800 text-white placeholder-zinc-500 rounded-2xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-600/50 focus:border-emerald-600/50 disabled:opacity-50 transition-all"
+                                />
+                            </div>
 
                             <button
                                 type="submit"

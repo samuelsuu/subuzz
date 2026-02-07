@@ -16,6 +16,7 @@ type ChatTarget = {
     type: 'user' | 'group';
     id: string;
     name: string;
+    avatar_url?: string | null;
 };
 
 export default function ChatLayout({ currentUser }: ChatLayoutProps) {

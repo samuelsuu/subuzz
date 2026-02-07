@@ -171,6 +171,33 @@ export default function MessageBubble({ message, isMe, onDelete }: MessageBubble
         }
     };
 
+    // Long press handling for mobile
+    const touchTimer = useRef<NodeJS.Timeout | null>(null);
+
+    const handleTouchStart = () => {
+        if (!isMe || !onDelete) return;
+        touchTimer.current = setTimeout(() => {
+            setShowMenu(true);
+            // Vibrate if supported
+            if (navigator.vibrate) navigator.vibrate(50);
+        }, 500); // 500ms long press
+    };
+
+    const handleTouchEnd = () => {
+        if (touchTimer.current) {
+            clearTimeout(touchTimer.current);
+            touchTimer.current = null;
+        }
+    };
+
+    const runDelete = () => {
+        if (confirm("Delete this message?")) {
+            handleDelete();
+        } else {
+            setShowMenu(false);
+        }
+    };
+
     return (
         <div
             className={cn(
@@ -198,34 +225,56 @@ export default function MessageBubble({ message, isMe, onDelete }: MessageBubble
                 )}
                 <div
                     className={cn(
-                        "relative px-4 py-2 shadow-sm rounded-2xl",
+                        "relative px-4 py-2 shadow-sm rounded-2xl transition-all",
                         isMe
                             ? "bg-emerald-600 text-white rounded-br-none"
-                            : "bg-zinc-800 text-zinc-100 rounded-bl-none border border-zinc-700"
+                            : "bg-zinc-800 text-zinc-100 rounded-bl-none border border-zinc-700",
+                        showMenu && "ring-2 ring-white/20 scale-[1.02]"
                     )}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onContextMenu={(e) => {
+                        if (isMe && onDelete) {
+                            e.preventDefault();
+                            setShowMenu(true);
+                        }
+                    }}
                 >
-                    {/* Delete button (only for me) */}
+                    {/* Delete button (Desktop hover) */}
                     {isMe && onDelete && (
-                        <div className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="hidden lg:block absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                                 onClick={() => setShowMenu(!showMenu)}
                                 className="p-1.5 bg-zinc-800 text-zinc-400 hover:text-red-400 rounded-full shadow-lg transition-colors border border-zinc-700"
-                                title="Delete message"
+                                title="Message options"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
                             </button>
                         </div>
                     )}
 
-                    {/* Delete confirmation dropdown */}
+                    {/* Delete Action Menu */}
                     {showMenu && (
-                        <div ref={menuRef} className="absolute left-0 top-0 -translate-x-full -translate-y-1/2 mr-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-10 p-2">
+                        <div
+                            ref={menuRef}
+                            className={cn(
+                                "absolute z-50 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-1.5 min-w-[140px] animate-in zoom-in-95 duration-100 origin-center",
+                                isMe ? "right-0 -bottom-2 translate-y-full" : "left-0 -bottom-2 translate-y-full"
+                            )}
+                        >
                             <button
-                                onClick={handleDelete}
-                                className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 rounded-md whitespace-nowrap"
+                                onClick={runDelete}
+                                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-zinc-800/80 rounded-lg transition-colors"
                             >
                                 <Trash2 className="w-4 h-4" />
-                                Delete message
+                                Delete
+                            </button>
+                            <div className="h-px bg-zinc-800 my-1" />
+                            <button
+                                onClick={() => setShowMenu(false)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                            >
+                                Cancel
                             </button>
                         </div>
                     )}
@@ -239,6 +288,11 @@ export default function MessageBubble({ message, isMe, onDelete }: MessageBubble
                     </p>
                 </div>
             </div>
+
+            {/* Overlay to close menu on mobile */}
+            {showMenu && (
+                <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setShowMenu(false)} />
+            )}
         </div>
     );
 }
