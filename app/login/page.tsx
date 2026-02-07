@@ -1,3 +1,7 @@
+// Force dynamic rendering to prevent build-time prerender errors
+// when Supabase environment variables are not available
+export const dynamic = 'force-dynamic';
+
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
