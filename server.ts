@@ -28,6 +28,10 @@ app.prepare().then(() => {
         }
     });
 
+    // ── Presence tracking ──
+    // Maps userId → Set of socketIds (a user can have multiple tabs)
+    const onlineUsers = new Map<string, Set<string>>();
+
     // Authentication middleware
     io.use(async (socket, next) => {
         const token = socket.handshake.auth.token;
@@ -62,6 +66,30 @@ app.prepare().then(() => {
     io.on("connection", (socket) => {
         const user = socket.data.user;
         console.log("✓ Client connected:", socket.id, user.email);
+
+        // ── Presence: mark user online ──
+        const userId: string = user.id;
+        // Join personal notification room
+        socket.join(`user_${userId}`);
+
+        const wasOffline = !onlineUsers.has(userId) || onlineUsers.get(userId)!.size === 0;
+        if (!onlineUsers.has(userId)) {
+            onlineUsers.set(userId, new Set());
+        }
+        onlineUsers.get(userId)!.add(socket.id);
+
+        if (wasOffline) {
+            // Broadcast to all clients that this user came online
+            io.emit("user_online", userId);
+            console.log(`🟢 User ${userId} is now online`);
+        }
+
+        // Send current online users list to the newly connected client
+        socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+
+        socket.on("get_online_users", () => {
+            socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+        });
 
         socket.on("join_room", (roomId: string) => {
             if (roomId.startsWith("group_")) {
@@ -160,12 +188,58 @@ app.prepare().then(() => {
 
             console.log("✓ Message saved:", insertedData.id);
 
-            // Broadcast to room
+            // Broadcast to room (for the chat window)
             io.to(roomId).emit("receive_message", insertedData);
+
+            // ── Send notification to receiver's personal room ──
+            if (receiverId) {
+                // DM: notify the receiver
+                io.to(`user_${receiverId}`).emit("new_notification", {
+                    senderName: insertedData.sender?.username || "Someone",
+                    content: message || (attachmentUrl ? "Sent an attachment" : "New message"),
+                    senderId,
+                    type: 'dm',
+                });
+            } else if (groupId) {
+                // Group: notify all group members in the room except sender
+                // We look up group members from the DB
+                const adminSupabase = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY!
+                );
+                const { data: members } = await adminSupabase
+                    .from("group_members")
+                    .select("user_id")
+                    .eq("group_id", groupId)
+                    .neq("user_id", senderId);
+
+                if (members) {
+                    for (const member of members) {
+                        io.to(`user_${member.user_id}`).emit("new_notification", {
+                            senderName: insertedData.sender?.username || "Someone",
+                            content: message || (attachmentUrl ? "Sent an attachment" : "New message"),
+                            senderId,
+                            groupName: data.groupName || "Group",
+                            type: 'group',
+                        });
+                    }
+                }
+            }
         });
 
         socket.on("disconnect", () => {
             console.log("✗ Client disconnected:", socket.id);
+
+            // ── Presence: mark user offline if no more sockets ──
+            const sockets = onlineUsers.get(userId);
+            if (sockets) {
+                sockets.delete(socket.id);
+                if (sockets.size === 0) {
+                    onlineUsers.delete(userId);
+                    io.emit("user_offline", userId);
+                    console.log(`🔴 User ${userId} is now offline`);
+                }
+            }
         });
 
         socket.on("delete_message", (data) => {

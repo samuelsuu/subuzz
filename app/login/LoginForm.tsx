@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Check, X, Loader2, ArrowLeft, MessageSquare, Shield, Zap } from "lucide-react";
+import { Check, X, Loader2, ArrowLeft, MessageSquare, Shield, Zap, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function LoginForm() {
@@ -13,6 +13,7 @@ export default function LoginForm() {
     const [signupMode, setSignupMode] = useState(false);
     const [username, setUsername] = useState("");
     const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+    const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
     const supabase = createClient();
 
@@ -173,13 +174,26 @@ export default function LoginForm() {
 
                             <div>
                                 <label className="block text-sm font-medium text-zinc-300 mb-1.5">Password</label>
-                                <input
-                                    name="password"
-                                    type="password"
-                                    required
-                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
-                                    placeholder="••••••••"
-                                />
+                                <div className="relative">
+                                    <input
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-10"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="w-4 h-4" />
+                                        ) : (
+                                            <Eye className="w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {signupMode && (

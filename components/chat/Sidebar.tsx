@@ -5,7 +5,7 @@ import { getUsers, getGroups, getCurrentProfile, createGroup } from "@/app/chat/
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { User } from "@supabase/supabase-js";
-import { LogOut, Users, Plus, X, Check, MessageCircle, Camera, Search, Settings, Edit2, Trash2 } from "lucide-react";
+import { LogOut, Users, Plus, X, Check, MessageCircle, Camera, Search, Settings, Edit2 } from "lucide-react";
 import type { Profile, Group } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
@@ -16,10 +16,11 @@ interface SidebarProps {
     currentUser: User;
     onSelectChat: (target: { type: 'user' | 'group'; id: string; name: string; avatar_url?: string | null }) => void;
     selectedId?: string;
+    onlineUsers: Set<string>;
     className?: string;
 }
 
-export default function Sidebar({ currentUser, onSelectChat, selectedId, className }: SidebarProps) {
+export default function Sidebar({ currentUser, onSelectChat, selectedId, onlineUsers, className }: SidebarProps) {
     const [users, setUsers] = useState<Profile[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -269,27 +270,19 @@ export default function Sidebar({ currentUser, onSelectChat, selectedId, classNa
                                                 {user.username || "Unknown"}
                                             </p>
                                         </div>
-                                        <p className="text-xs text-zinc-500 truncate mt-0.5 group-hover:text-zinc-400">Tap to start chatting</p>
+                                        <p className="text-xs truncate mt-0.5 flex items-center gap-1">
+                                            <span className={cn(
+                                                "w-1.5 h-1.5 rounded-full shrink-0",
+                                                onlineUsers.has(user.id) ? "bg-emerald-500" : "bg-zinc-600"
+                                            )} />
+                                            <span className={onlineUsers.has(user.id) ? "text-emerald-500" : "text-zinc-500"}>
+                                                {onlineUsers.has(user.id) ? "Online" : "Offline"}
+                                            </span>
+                                        </p>
                                     </div>
                                 </button>
                                 {/* Mobile/Desktop Delete Action - Visible on hover or long press (handled via UI here for now as button) */}
-                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (confirm(`Delete conversation with ${user.username}?`)) {
-                                                // Assuming we have a prop or method to delete/hide chat from sidebar
-                                                // For now, this is a placeholder UI action as actual deletion requires backend support
-                                                // defaulting to just UI feedback
-                                                toast.success("Conversation hidden from list");
-                                            }
-                                        }}
-                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-lg transition-colors"
-                                        title="Delete conversation"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
+
                             </div>
                         ))
                     )

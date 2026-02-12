@@ -21,7 +21,7 @@ type ChatTarget = {
 
 export default function ChatLayout({ currentUser }: ChatLayoutProps) {
     const [selectedChat, setSelectedChat] = useState<ChatTarget | null>(null);
-    const { socket, isConnected } = useSocket();
+    const { socket, isConnected, onlineUsers, setNotificationCallback } = useSocket();
 
     // Request notification permission on mount
     useEffect(() => {
@@ -30,6 +30,26 @@ export default function ChatLayout({ currentUser }: ChatLayoutProps) {
         }
     }, []);
 
+    // Global notification handler (fires for all chats, not just active)
+    useEffect(() => {
+        setNotificationCallback((data) => {
+            // Don't notify for my own messages
+            if (data.senderId === currentUser.id) return;
+
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const title = data.type === 'group'
+                    ? `${data.senderName} in ${data.groupName}`
+                    : data.senderName;
+
+                new Notification(title, {
+                    body: data.content,
+                    icon: '/icons/icon-192.svg',
+                    tag: `msg-${data.senderId}`,
+                });
+            }
+        });
+    }, [currentUser.id, setNotificationCallback]);
+
     return (
         <div className="flex h-[100dvh] bg-zinc-950 overflow-hidden">
             {/* Sidebar - hidden on mobile if chat active */}
@@ -37,6 +57,7 @@ export default function ChatLayout({ currentUser }: ChatLayoutProps) {
                 currentUser={currentUser}
                 onSelectChat={setSelectedChat}
                 selectedId={selectedChat?.id}
+                onlineUsers={onlineUsers}
                 className={cn(
                     "w-full md:w-80 flex-shrink-0 z-10",
                     selectedChat ? "hidden md:flex" : "flex"
@@ -54,6 +75,7 @@ export default function ChatLayout({ currentUser }: ChatLayoutProps) {
                         target={selectedChat}
                         socket={socket}
                         onBack={() => setSelectedChat(null)}
+                        onlineUsers={onlineUsers}
                         className="flex-1"
                     />
                 ) : (
@@ -78,3 +100,4 @@ export default function ChatLayout({ currentUser }: ChatLayoutProps) {
         </div>
     );
 }
+

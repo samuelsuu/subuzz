@@ -22,12 +22,13 @@ interface ChatWindowProps {
     target: { type: 'user' | 'group'; id: string; name: string; avatar_url?: string | null };
     socket: Socket | null;
     onBack?: () => void;
+    onlineUsers: Set<string>;
     className?: string;
 }
 
 
 
-export default function ChatWindow({ currentUser, target, socket, onBack, className }: ChatWindowProps) {
+export default function ChatWindow({ currentUser, target, socket, onBack, onlineUsers, className }: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
@@ -75,14 +76,7 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
         const handleReceiveMessage = (message: Message) => {
             setMessages((prev) => [...prev, message]);
             setTimeout(scrollToBottom, 100);
-
-            // Browser notification if not from me
-            if (message.sender_id !== currentUser.id && Notification.permission === 'granted') {
-                new Notification('New message', {
-                    body: message.content || 'Sent an attachment',
-                    icon: '/favicon.ico'
-                });
-            }
+            // Notifications are now handled globally in ChatLayout
         };
 
         const handleMessageDeleted = (messageId: string) => {
@@ -255,10 +249,25 @@ export default function ChatWindow({ currentUser, target, socket, onBack, classN
                 <div className="flex-1 min-w-0">
                     <h2 className="font-bold text-white truncate text-base leading-tight">{currentGroup?.name || target.name}</h2>
                     <div className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                        <span className="text-xs text-emerald-500 font-medium truncate">
-                            {target.type === 'group' ? 'Group chat' : 'Online'}
-                        </span>
+                        {target.type === 'group' ? (
+                            <>
+                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
+                                <span className="text-xs text-purple-400 font-medium truncate">Group chat</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className={cn(
+                                    "h-1.5 w-1.5 rounded-full shrink-0",
+                                    onlineUsers.has(target.id) ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"
+                                )} />
+                                <span className={cn(
+                                    "text-xs font-medium truncate",
+                                    onlineUsers.has(target.id) ? "text-emerald-500" : "text-zinc-500"
+                                )}>
+                                    {onlineUsers.has(target.id) ? 'Online' : 'Offline'}
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
                 {/* Clear conversation button - DMs only */}

@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import RegisterSW from "@/components/RegisterSW";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +17,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Subuzz - Realtime Chat",
   description: "Secure 1-on-1 realtime messaging",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Subuzz",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -25,10 +40,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <RegisterSW />
         <Toaster
           position="top-center"
           toastOptions={{
@@ -55,3 +74,4 @@ export default function RootLayout({
     </html>
   );
 }
+
