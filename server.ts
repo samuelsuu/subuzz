@@ -1,8 +1,22 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
 import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
+
+// ── Web Push VAPID config ──
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        process.env.VAPID_MAILTO || 'mailto:admin@subuzz.com',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+    console.log("✓ Web Push VAPID configured");
+} else {
+    console.warn("⚠ VAPID keys not set — Web Push disabled");
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -31,6 +45,56 @@ app.prepare().then(() => {
     // ── Presence tracking ──
     // Maps userId → Set of socketIds (a user can have multiple tabs)
     const onlineUsers = new Map<string, Set<string>>();
+
+    // ── Web Push helper ──
+    async function sendPushToUser(targetUserId: string, payload: { title: string; body: string; tag?: string }) {
+        if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+
+        const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { data: subs } = await adminSupabase
+            .from('push_subscriptions')
+            .select('endpoint, keys_p256dh, keys_auth')
+            .eq('user_id', targetUserId);
+
+        if (!subs || subs.length === 0) return;
+
+        const pushPayload = JSON.stringify({
+            title: payload.title,
+            body: payload.body,
+            tag: payload.tag || 'message',
+            url: '/chat',
+        });
+
+        for (const sub of subs) {
+            try {
+                await webpush.sendNotification(
+                    {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.keys_p256dh,
+                            auth: sub.keys_auth,
+                        },
+                    },
+                    pushPayload
+                );
+            } catch (err: any) {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    // Subscription expired/invalid — clean up
+                    console.log(`🗑️ Removing stale push sub: ${sub.endpoint.substring(0, 50)}...`);
+                    await adminSupabase
+                        .from('push_subscriptions')
+                        .delete()
+                        .eq('endpoint', sub.endpoint);
+                } else {
+                    console.error('Push send error:', err.statusCode, err.message);
+                }
+            }
+        }
+    }
 
     // Authentication middleware
     io.use(async (socket, next) => {
@@ -191,18 +255,26 @@ app.prepare().then(() => {
             // Broadcast to room (for the chat window)
             io.to(roomId).emit("receive_message", insertedData);
 
-            // ── Send notification to receiver's personal room ──
+            // ── Send notification to receiver's personal room + Web Push ──
+            const senderName = insertedData.sender?.username || "Someone";
+            const notifContent = message || (attachmentUrl ? "Sent an attachment" : "New message");
+
             if (receiverId) {
-                // DM: notify the receiver
+                // DM: notify the receiver via socket
                 io.to(`user_${receiverId}`).emit("new_notification", {
-                    senderName: insertedData.sender?.username || "Someone",
-                    content: message || (attachmentUrl ? "Sent an attachment" : "New message"),
+                    senderName,
+                    content: notifContent,
                     senderId,
                     type: 'dm',
                 });
+                // DM: send Web Push (works when tab is closed)
+                sendPushToUser(receiverId, {
+                    title: senderName,
+                    body: notifContent,
+                    tag: `dm-${senderId}`,
+                });
             } else if (groupId) {
-                // Group: notify all group members in the room except sender
-                // We look up group members from the DB
+                // Group: notify all group members except sender
                 const adminSupabase = createClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
                     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -214,13 +286,20 @@ app.prepare().then(() => {
                     .neq("user_id", senderId);
 
                 if (members) {
+                    const groupLabel = data.groupName || "Group";
                     for (const member of members) {
                         io.to(`user_${member.user_id}`).emit("new_notification", {
-                            senderName: insertedData.sender?.username || "Someone",
-                            content: message || (attachmentUrl ? "Sent an attachment" : "New message"),
+                            senderName,
+                            content: notifContent,
                             senderId,
-                            groupName: data.groupName || "Group",
+                            groupName: groupLabel,
                             type: 'group',
+                        });
+                        // Web Push for each group member
+                        sendPushToUser(member.user_id, {
+                            title: `${senderName} in ${groupLabel}`,
+                            body: notifContent,
+                            tag: `group-${groupId}`,
                         });
                     }
                 }

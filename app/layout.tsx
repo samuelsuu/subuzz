@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Subuzz - Realtime Chat",
   description: "Secure 1-on-1 realtime messaging",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/icons/icon-192.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -40,9 +43,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
